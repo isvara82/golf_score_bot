@@ -3,61 +3,98 @@ import requests
 from bs4 import BeautifulSoup
 from telegram import Bot
 
+# 환경변수에서 토큰과 챗 ID 읽기
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-# ✅ 이름 매핑: 영어 이름 → 한글 이름
+# ✅ 선수 목록 (영문 이름 → 한글 이름)
 MY_PLAYERS = {
+    # PGA
     "Sungjae Im": "임성재",
-    "Yubin Jang": "장유빈",
+
+    # LPGA
     "Amy Yang": "양희영",
+
+    # KLPGA
+    "Yumin Hwang": "황유민",
+
+    # KPGA
     "Taehoon Lee": "이태훈",
     "Junggon Hwang": "황중곤",
     "Soomin Lee": "이수민",
     "Seungmin Kim": "김승민",
     "Hyunwook Kim": "김현욱",
-    "Joonhee Choi": "최준희"
+    "Joonhee Choi": "최준희",
+
+    # LIV
+    "Yubin Jang": "장유빈"
 }
 
+# ✅ PGA 리더보드 크롤링
 def get_pga_leaderboard():
     url = 'https://www.espn.com/golf/leaderboard/_/tour/pga'
     headers = {'User-Agent': 'Mozilla/5.0'}
-    response = requests.get(url, headers=headers)
-    soup = BeautifulSoup(response.content, 'html.parser')
+    try:
+        response = requests.get(url, headers=headers)
+        soup = BeautifulSoup(response.content, 'html.parser')
 
-    leaderboard = []
-    rows = soup.select('table tbody tr')
-    for row in rows:
-        cols = row.find_all('td')
-        if len(cols) < 5:
-            continue
-        position = cols[0].text.strip()
-        name = cols[1].text.strip()
-        score = cols[2].text.strip()
-        leaderboard.append({'name': name, 'score': score, 'position': position})
-    return leaderboard
+        leaderboard = []
+        rows = soup.select('table tbody tr')
+        for row in rows:
+            cols = row.find_all('td')
+            if len(cols) < 5:
+                continue
+            position = cols[0].text.strip()
+            name = cols[1].text.strip()
+            score = cols[2].text.strip()
+            leaderboard.append({'name': name, 'score': score, 'position': position})
+        return leaderboard
+    except Exception as e:
+        print(f"PGA 크롤링 실패: {e}")
+        return []
 
-def format_message(leaderboard):
+# ✅ KLPGA 리더보드 크롤링 (※ 매 대회 URL 자동 추적이 필요할 수 있음. 현재는 기본 페이지로 접근)
+def get_klpga_leaderboard():
+    url = "https://www.klpga.co.kr/web/tour/score/leaderboard.do"
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    try:
+        response = requests.get(url, headers=headers)
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        leaderboard = []
+        rows = soup.select("table tbody tr")
+
+        for row in rows:
+            cols = row.find_all("td")
+            if len(cols) < 5:
+                continue
+            position = cols[0].text.strip()
+            name = cols[1].text.strip()
+            score = cols[3].text.strip()
+            leaderboard.append({'name': name, 'score': score, 'position': position})
+        return leaderboard
+    except Exception as e:
+        print(f"KLPGA 크롤링 실패: {e}")
+        return []
+
+# ✅ 공통 메시지 포맷 함수
+def format_message(leaderboard, tour_name):
     if not leaderboard:
-        return "PGA 리더보드를 불러올 수 없습니다."
+        return f"{tour_name} 리더보드를 불러올 수 없습니다."
 
-    message = "⛳️ [PGA 투어 성적 요약]\n\n"
-
-    # 🏆 선두 선수 (그대로 표시)
+    message = f"⛳️ [{tour_name} 투어 성적 요약]\n\n"
     leader = leaderboard[0]
     message += f"🏆 선두: {leader['name']} ({leader['score']}) - {leader['position']}위\n"
 
-    # ⭐️ 우리 선수 찾기
     my_players_data = []
     for p in leaderboard:
         for eng_name, kor_name in MY_PLAYERS.items():
-            if eng_name.lower() in p['name'].lower():
-                player_data = {
-                    'name': kor_name,  # 출력은 한글로
+            if eng_name.lower() in p['name'].lower() or kor_name in p['name']:
+                my_players_data.append({
+                    'name': kor_name,
                     'score': p['score'],
                     'position': p['position']
-                }
-                my_players_data.append(player_data)
+                })
 
     if my_players_data:
         message += "\n⭐️ 우리 소속 선수 성적:\n"
@@ -68,6 +105,7 @@ def format_message(leaderboard):
 
     return message
 
+# ✅ 텔레그램 메시지 전송
 def send_telegram_message(text):
     try:
         bot = Bot(token=TELEGRAM_TOKEN)
@@ -76,7 +114,18 @@ def send_telegram_message(text):
     except Exception as e:
         print(f"❌ 메시지 전송 실패: {str(e)}")
 
+# ✅ 메인 실행
 if __name__ == "__main__":
-    leaderboard = get_pga_leaderboard()
-    message = format_message(leaderboard)
-    send_telegram_message(message)
+    print("⛳️ 골프 투어 성적 봇 실행 시작")
+
+    # PGA
+    pga_data = get_pga_leaderboard()
+    pga_message = format_message(pga_data, "PGA")
+
+    # KLPGA
+    klpga_data = get_klpga_leaderboard()
+    klpga_message = format_message(klpga_data, "KLPGA")
+
+    # 메시지 통합
+    full_message = pga_message + "\n\n" + klpga_message
+    send_telegram_message(full_message)
