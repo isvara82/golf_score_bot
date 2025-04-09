@@ -2,7 +2,8 @@ name: Golf Score Telegram Bot
 
 on:
   schedule:
-    - cron: '0 22 * * 3,4,5,6,0'  # 매주 목~월 오전 7시
+    - cron: '0 22 * * 3,4,5,6,0'  # 한국시간 오전 7시 (UTC 22시)
+    - cron: '0 8 * * 3,4,5,6,0'   # 한국시간 오후 5시 (UTC 8시)
   workflow_dispatch:
 
 jobs:
