@@ -17,7 +17,7 @@ MY_PLAYERS = {
     "Wooyoung Cho": "조우영",
     "Hyunwook Kim": "김현욱",
     "Joonhee Choi": "최준희",
-    "Yumin Hwang": "황유민",
+    "Yumin Hwang": "유지나",
     "Yubin Jang": "장유빈"
 }
 
