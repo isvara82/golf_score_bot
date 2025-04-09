@@ -103,7 +103,7 @@ def get_kpga_leaderboard():
         return []
 
 def get_klpga_leaderboard_url():
-    url = "https://www.klpga.co.kr/web/tour/tournament/ongoing.do"
+    url = "http://klpga.co.kr/web/leaderboad/leaderboard"
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
         res = requests.get(url, headers=headers)
