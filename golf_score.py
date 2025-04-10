@@ -110,34 +110,32 @@ def get_kpga_leaderboard():
 def get_klpga_leaderboard():
     headers = {'User-Agent': 'Mozilla/5.0'}
 
-    # 1단계: 현재 대회 코드 자동 추출 시도
+    # 현재 대회 코드 자동 추출
     try:
         main_url = "https://klpga.co.kr/web/leaderboard/leaderboard"
         res = requests.get(main_url, headers=headers)
         soup = BeautifulSoup(res.text, "html.parser")
 
-        # script 태그 내에서 tournamentCode 추출
+        # script 태그에서 tournamentCode 추출
         script_tag = soup.find("script", string=lambda t: t and "tournamentCode" in t)
         import re
-        match = re.search(r'tournamentCode\s*=\s*"(\d+)"', script_tag.text) if script_tag else None
+        match = re.search(r'tournamentCode\s*=\s*"(\\d+)"', script_tag.text) if script_tag else None
         tournament_code = match.group(1) if match else None
     except Exception as e:
-        print("자동 추출 실패:", e)
+        print("KLPGA 대회 코드 추출 실패", e)
         tournament_code = None
 
-    # 2단계: 자동 실패 시 fallback 대회코드 사용
+    # fallback 코드 (수동 지정)
     if not tournament_code:
-        print("자동 추출 실패, 백업 코드 사용")
-        tournament_code = "2024050025"  # 최신 대회 코드 수동 설정
+        tournament_code = "2025050030"  # 예비 코드 (IM금융오픈)
 
-    # 3단계: JSON API 호출
     try:
         json_url = f"https://klpga.co.kr/web/leaderboard/leaderboard.json?tournamentCode={tournament_code}"
-        print("KLPGA 요청 URL:", json_url)
-        res_json = requests.get(json_url, headers=headers)
-        data = res_json.json()
+        res = requests.get(json_url, headers=headers)
+        data = res.json()
+        players = data.get("data", [])
         leaderboard = []
-        for player in data.get("data", []):
+        for player in players:
             leaderboard.append({
                 "name": player.get("playerName", ""),
                 "position": player.get("rank", ""),
@@ -145,7 +143,7 @@ def get_klpga_leaderboard():
             })
         return leaderboard
     except Exception as e:
-        print("KLPGA 최종 JSON 실패:", e)
+        print("KLPGA JSON 요청 실패:", e)
         return []
 
 def get_liv_leaderboard():
