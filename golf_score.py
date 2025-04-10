@@ -107,59 +107,44 @@ def get_kpga_leaderboard():
         print(f"KPGA 크롤링 실패: {e}")
         return []
 
-def get_klpga_leaderboard_url():
-    url = "https://www.klpga.co.kr/web/tour/tournament/ongoing.do"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        res = requests.get(url, headers=headers)
-        soup = BeautifulSoup(res.content, "html.parser")
-        link_tag = soup.select_one("div.tbl_wrap tbody tr td.tit a")
-        if link_tag:
-            return f"https://www.klpga.co.kr{link_tag.get('href')}"
-    except Exception as e:
-        print(f"KLPGA 대회 URL 추적 실패: {e}")
-    return "https://klpga.co.kr/web/leaderboard/leaderboard"
-
 def get_klpga_leaderboard():
-    json_url = "https://klpga.co.kr/web/leaderboard/leaderboard.json"
-    headers = {'User-Agent': 'Mozilla/5.0'}
     try:
-        res = requests.get(json_url, headers=headers)
-        data = res.json()
+        # 1단계: 대회 코드 추출
+        page_url = "https://klpga.co.kr/web/leaderboard/leaderboard"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        res = requests.get(page_url, headers=headers)
+        soup = BeautifulSoup(res.content, 'html.parser')
+
+        # script 태그에서 tournamentCode 추출
+        script_tag = soup.find("script", string=lambda t: t and "tournamentCode" in t)
+        if not script_tag:
+            print("KLPGA 대회 코드 추출 실패")
+            return []
+
+        import re
+        match = re.search(r'tournamentCode\s*=\s*"(\d+)"', script_tag.text)
+        if not match:
+            print("대회 코드 정규식 매칭 실패")
+            return []
+
+        tournament_code = match.group(1)
+
+        # 2단계: JSON API로 성적 가져오기
+        json_url = f"https://klpga.co.kr/web/leaderboard/leaderboard.json?tournamentCode={tournament_code}"
+        res_json = requests.get(json_url, headers=headers)
+        data = res_json.json()
         players = data.get("data", [])
         leaderboard = []
         for player in players:
-            position = player.get("rank", "")
-            name = player.get("playerName", "")
-            score = player.get("toPar", "")
-            leaderboard.append({"name": name, "position": position, "score": score})
+            leaderboard.append({
+                "name": player.get("playerName", ""),
+                "position": player.get("rank", ""),
+                "score": player.get("toPar", "")
+            })
         return leaderboard
+
     except Exception as e:
         print(f"KLPGA JSON 크롤링 실패: {e}")
-        return []
-    except Exception as e:
-        print(f"KLPGA 크롤링 실패: {e}")
-        return []
-
-def get_liv_leaderboard():
-    url = "https://www.livgolf.com/leaderboard"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        res = requests.get(url, headers=headers)
-        soup = BeautifulSoup(res.content, "html.parser")
-        rows = soup.select("table tbody tr")
-        leaderboard = []
-        for row in rows:
-            cols = row.find_all("td")
-            if len(cols) < 4:
-                continue
-            position = cols[0].text.strip()
-            name = cols[1].text.strip()
-            score = cols[3].text.strip()
-            leaderboard.append({'name': name, 'score': score, 'position': position})
-        return leaderboard
-    except Exception as e:
-        print(f"LIV 크롤링 실패: {e}")
         return []
 
 def get_asian_tour_leaderboard():
