@@ -8,8 +8,13 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
 # 한글 이름 매핑
 MY_PLAYERS = {
+    # PGA
     "Sungjae Im": "임성재",
+
+    # LPGA
     "Amy Yang": "양희영",
+
+    # KPGA (정렬 순서 적용)
     "Taehoon Lee": "이태훈",
     "Junggon Hwang": "황중곤",
     "Soomin Lee": "이수민",
@@ -17,7 +22,11 @@ MY_PLAYERS = {
     "Wooyoung Cho": "조우영",
     "Hyunwook Kim": "김현욱",
     "Joonhee Choi": "최준희",
+
+    # KLPGA
     "Yumin Hwang": "황유민",
+
+    # LIV
     "Yubin Jang": "장유빈"
 }
 
@@ -103,7 +112,8 @@ def get_kpga_leaderboard():
         return []
 
 def get_klpga_leaderboard_url():
-    url = "http://klpga.co.kr/web/leaderboad/leaderboard"
+    # 기본 자동 추적 URL
+    url = "https://www.klpga.co.kr/web/tour/tournament/ongoing.do"
     headers = {"User-Agent": "Mozilla/5.0"}
     try:
         res = requests.get(url, headers=headers)
@@ -114,7 +124,10 @@ def get_klpga_leaderboard_url():
             return f"https://www.klpga.co.kr{relative_url}"
     except Exception as e:
         print(f"KLPGA 대회 URL 추적 실패: {e}")
-    return None
+
+    # 자동 추적 실패 시 fallback 주소 사용
+    print("자동 추적 실패: 백업 리더보드 주소 사용")
+    return "https://klpga.co.kr/web/leaderboard/leaderboard"
 
 def get_klpga_leaderboard():
     url = get_klpga_leaderboard_url()
@@ -193,12 +206,17 @@ def get_asian_tour_leaderboard():
 
 def format_message(leaderboard, tour_name):
     if not leaderboard:
-        return f"⛳️ [{tour_name} 투어 성적 요약]\n\n리더보드를 불러올 수 없습니다."
+        return f"⛳️ [{tour_name} 투어 성적 요약]
 
-    message = f"⛳️ [{tour_name} 투어 성적 요약]\n\n"
+리더보드를 불러올 수 없습니다."
+
+    message = f"⛳️ [{tour_name} 투어 성적 요약]
+
+"
     leader = leaderboard[0]
     leader_name = MY_PLAYERS.get(leader['name'], leader['name'])
-    message += f"🏆 선두: {leader_name} : {leader['position']}위({leader['score']})\n"
+    message += f"🏆 선두: {leader_name} : {leader['position']}위({leader['score']})
+"
 
     my_players_data = []
     for eng_name, kor_name in MY_PLAYERS.items():
@@ -212,35 +230,46 @@ def format_message(leaderboard, tour_name):
                 break
 
     if my_players_data:
-        message += "\n⭐️ 소속 선수:\n"
+        message += "
+⭐️ 소속 선수:
+"
         for player in my_players_data:
-            message += f"{player['name']} : {player['position']}위({player['score']})\n"
+            message += f"{player['name']} : {player['position']}위({player['score']})
+"
     else:
-        message += "\n(우리 소속 선수는 현재 리더보드에 없습니다.)"
+        message += "
+(우리 소속 선수는 현재 리더보드에 없습니다.)"
 
     return message
-
-# ----------- 텔레그램 전송 -----------
-
-def send_telegram_message(text):
-    try:
-        bot = Bot(token=TELEGRAM_TOKEN)
-        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=text)
-        print("✅ 메시지 전송 성공")
-    except Exception as e:
-        print(f"❌ 메시지 전송 실패: {str(e)}")
 
 # ----------- 실행 -----------
 
 if __name__ == "__main__":
     all_messages = []
 
-    all_messages.append(format_message(get_pga_leaderboard(), "PGA"))
-    all_messages.append(format_message(get_lpga_leaderboard(), "LPGA"))
-    all_messages.append(format_message(get_kpga_leaderboard(), "KPGA"))
-    all_messages.append(format_message(get_klpga_leaderboard(), "KLPGA"))
-    all_messages.append(format_message(get_liv_leaderboard(), "LIV"))
-    all_messages.append(format_message(get_asian_tour_leaderboard(), "아시안투어"))
+    # PGA
+    pga = get_pga_leaderboard()
+    all_messages.append(format_message(pga, "PGA"))
+
+    # LPGA
+    lpga = get_lpga_leaderboard()
+    all_messages.append(format_message(lpga, "LPGA"))
+
+    # KPGA
+    kpga = get_kpga_leaderboard()
+    all_messages.append(format_message(kpga, "KPGA"))
+
+    # KLPGA
+    klpga = get_klpga_leaderboard()
+    all_messages.append(format_message(klpga, "KLPGA"))
+
+    # LIV
+    liv = get_liv_leaderboard()
+    all_messages.append(format_message(liv, "LIV"))
+
+    # Asian Tour
+    asian = get_asian_tour_leaderboard()
+    all_messages.append(format_message(asian, "아시안투어"))
 
     final_message = "\n\n------------------------------\n\n".join(all_messages)
     send_telegram_message(final_message)
