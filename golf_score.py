@@ -121,22 +121,22 @@ def get_klpga_leaderboard_url():
     return "https://klpga.co.kr/web/leaderboard/leaderboard"
 
 def get_klpga_leaderboard():
-    url = get_klpga_leaderboard_url()
+    json_url = "https://klpga.co.kr/web/leaderboard/leaderboard.json"
     headers = {'User-Agent': 'Mozilla/5.0'}
     try:
-        response = requests.get(url, headers=headers)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        rows = soup.select("table.score tbody tr")
+        res = requests.get(json_url, headers=headers)
+        data = res.json()
+        players = data.get("data", [])
         leaderboard = []
-        for row in rows:
-            cols = row.find_all("td")
-            if len(cols) < 5:
-                continue
-            position = cols[0].text.strip()
-            name = cols[1].text.strip()
-            score = cols[3].text.strip()
-            leaderboard.append({'name': name, 'score': score, 'position': position})
+        for player in players:
+            position = player.get("rank", "")
+            name = player.get("playerName", "")
+            score = player.get("toPar", "")
+            leaderboard.append({"name": name, "position": position, "score": score})
         return leaderboard
+    except Exception as e:
+        print(f"KLPGA JSON 크롤링 실패: {e}")
+        return []
     except Exception as e:
         print(f"KLPGA 크롤링 실패: {e}")
         return []
