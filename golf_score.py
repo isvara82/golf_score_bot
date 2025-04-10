@@ -20,15 +20,15 @@ MY_PLAYERS = {
     "Tom Kim": "김주형"
 }
 
-# ✅ 현재 진행 중인 PGA 대회 ID 가져오기
-def get_current_tournament_id():
+# ✅ 현재 진행 중인 PGA 대회 전체 정보 가져오기
+def get_current_tournament_info():
     url = "https://live-golf-data.p.rapidapi.com/tournaments"
     res = requests.get(url, headers=HEADERS)
     data = res.json()
 
     for t in data.get("tournaments", []):
         if t.get("status") == "In Progress":
-            return t.get("id")
+            return t  # 전체 정보 반환
     return None
 
 # ✅ 해당 대회의 리더보드 정보 가져오기
@@ -38,11 +38,12 @@ def get_leaderboard(tournament_id):
     return res.json().get("leaderboard", [])
 
 # ✅ 메시지 포맷 구성
-def format_message(leaderboard):
+def format_message(tournament_name, leaderboard):
     if not leaderboard:
-        return "PGA 리더보드를 불러올 수 없습니다."
+        return f"PGA 리더보드를 불러올 수 없습니다. ({tournament_name})"
 
-    message = "⛳️ [PGA 투어 성적 요약]\n"
+    message = f"⛳️ [PGA 투어 성적 요약 - {tournament_name}]
+"
 
     # 선두 정보
     leader = leaderboard[0]
@@ -72,10 +73,10 @@ def send_telegram_message(text):
 
 # ✅ 메인 실행
 if __name__ == "__main__":
-    tid = get_current_tournament_id()
-    if tid:
-        leaderboard = get_leaderboard(tid)
-        msg = format_message(leaderboard)
+    t = get_current_tournament_info()
+    if t:
+        leaderboard = get_leaderboard(t["id"])
+        msg = format_message(t["name"], leaderboard)
     else:
         msg = "현재 진행 중인 PGA 대회가 없습니다."
 
