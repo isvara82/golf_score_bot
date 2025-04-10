@@ -109,13 +109,12 @@ def get_kpga_leaderboard():
 
 def get_klpga_leaderboard():
     try:
-        # 1단계: 대회 코드 추출
+        # 대회코드 추출용 페이지
         page_url = "https://klpga.co.kr/web/leaderboard/leaderboard"
         headers = {'User-Agent': 'Mozilla/5.0'}
         res = requests.get(page_url, headers=headers)
         soup = BeautifulSoup(res.content, 'html.parser')
 
-        # script 태그에서 tournamentCode 추출
         script_tag = soup.find("script", string=lambda t: t and "tournamentCode" in t)
         if not script_tag:
             print("KLPGA 대회 코드 추출 실패")
@@ -129,7 +128,6 @@ def get_klpga_leaderboard():
 
         tournament_code = match.group(1)
 
-        # 2단계: JSON API로 성적 가져오기
         json_url = f"https://klpga.co.kr/web/leaderboard/leaderboard.json?tournamentCode={tournament_code}"
         res_json = requests.get(json_url, headers=headers)
         data = res_json.json()
