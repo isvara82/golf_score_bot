@@ -133,7 +133,7 @@ def get_klpga_leaderboard():
     # 3단계: JSON API 호출
     try:
         json_url = f"https://klpga.co.kr/web/leaderboard/leaderboard.json?tournamentCode={tournament_code}"
-        print("KLPGA 요청 URL:", json_url)  # ← 디버깅용
+        print("KLPGA 요청 URL:", json_url)
         res_json = requests.get(json_url, headers=headers)
         data = res_json.json()
         leaderboard = []
