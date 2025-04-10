@@ -145,6 +145,27 @@ def get_klpga_leaderboard():
         print(f"KLPGA JSON 크롤링 실패: {e}")
         return []
 
+def get_liv_leaderboard():
+    url = "https://www.livgolf.com/leaderboard"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    try:
+        res = requests.get(url, headers=headers)
+        soup = BeautifulSoup(res.content, "html.parser")
+        rows = soup.select("table tbody tr")
+        leaderboard = []
+        for row in rows:
+            cols = row.find_all("td")
+            if len(cols) < 4:
+                continue
+            position = cols[0].text.strip()
+            name = cols[1].text.strip()
+            score = cols[3].text.strip()
+            leaderboard.append({'name': name, 'score': score, 'position': position})
+        return leaderboard
+    except Exception as e:
+        print(f"LIV 크롤링 실패: {e}")
+        return []
+
 def get_asian_tour_leaderboard():
     url = "https://asiantour.com/results"
     headers = {"User-Agent": "Mozilla/5.0"}
