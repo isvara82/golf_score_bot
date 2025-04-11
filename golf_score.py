@@ -33,7 +33,7 @@ def get_current_tournament():
             return t
     return None
 
-# 성적 메시지
+# 성적 메시지 생성
 def format_score_message(tournament_id, tournament_name):
     url = f"https://live-golf-data.p.rapidapi.com/leaderboard?tournamentId={tournament_id}"
     res = requests.get(url, headers=HEADERS)
@@ -55,7 +55,7 @@ def format_score_message(tournament_id, tournament_name):
         msg += "\n(소속 선수 없음)"
     return msg
 
-# 티오프 메시지
+# 티오프 메시지 생성
 def format_tee_time_message(tournament_id, tournament_name, start_date, end_date):
     url = f"https://live-golf-data.p.rapidapi.com/teeTimes?tournamentId={tournament_id}"
     res = requests.get(url, headers=HEADERS)
@@ -79,7 +79,7 @@ def format_tee_time_message(tournament_id, tournament_name, start_date, end_date
         msg += "(소속 선수 티오프 정보 없음)"
     return msg
 
-# 텔레그램 전송
+# 텔레그램 메시지 전송
 def send_telegram_message(text):
     try:
         bot = Bot(token=TELEGRAM_TOKEN)
