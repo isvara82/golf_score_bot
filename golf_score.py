@@ -19,17 +19,17 @@ MY_PLAYERS = {
     "Tom Kim": "김주형"
 }
 
-# 한국 시간 변환
+# UTC → KST 시간 변환
 def utc_to_kst(utc_str):
     utc_time = datetime.strptime(utc_str, "%Y-%m-%dT%H:%M:%SZ")
     return (utc_time + timedelta(hours=9)).strftime("%H:%M")
 
-# 현재 PGA 대회 정보 가져오기
+# 현재 진행 중 또는 예정된 대회 가져오기 (모든 대회 포함)
 def get_current_tournament():
     url = "https://live-golf-data.p.rapidapi.com/tournaments"
     res = requests.get(url, headers=HEADERS)
     for t in res.json().get("tournaments", []):
-        if t["orgId"] == 1 and t["status"] in ["Scheduled", "In Progress"]:
+        if t["status"] in ["Scheduled", "In Progress"]:
             return t
     return None
 
