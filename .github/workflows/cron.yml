@@ -3,10 +3,20 @@ name: Daily Golf Score Alert
 on:
   schedule:
     # 오전 7시 (KST) → 22:00 UTC (수~월)
-    - cron: "0 22 * * 3-1"
+    - cron: "0 22 * * 3"  # 수요일
+    - cron: "0 22 * * 4"  # 목요일
+    - cron: "0 22 * * 5"  # 금요일
+    - cron: "0 22 * * 6"  # 토요일
+    - cron: "0 22 * * 0"  # 일요일
+    - cron: "0 22 * * 1"  # 월요일
+
     # 오후 5시 (KST) → 08:00 UTC (목~일)
-    - cron: "0 8 * * 4-0"
-  workflow_dispatch:  # 수동 실행 허용
+    - cron: "0 8 * * 4"   # 목요일
+    - cron: "0 8 * * 5"   # 금요일
+    - cron: "0 8 * * 6"   # 토요일
+    - cron: "0 8 * * 0"   # 일요일
+
+  workflow_dispatch:  # 수동 실행 버튼 허용
 
 jobs:
   run-golf-score:
