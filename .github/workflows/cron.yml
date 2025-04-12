@@ -3,7 +3,7 @@ name: Golf Score Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 22 * * *'  # 매일 오전 7시 (KST) 실행
+    - cron: '0 22 * * *'  # 한국시간 오전 7시
 
 jobs:
   run-bot:
@@ -26,6 +26,11 @@ jobs:
         echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
         sudo apt-get update
         sudo apt-get install -y google-chrome-stable
+
+    - name: Install Tesseract OCR
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tesseract-ocr
 
     - name: Install dependencies
       run: |
