@@ -1,108 +1,86 @@
 import os
+import time
 import requests
-from telegram import Bot
-from datetime import datetime, timedelta
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from PIL import Image, ImageEnhance
+import pytesseract
 
-# 환경 변수
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
-RAPID_API_KEY = os.environ.get("RAPID_API_KEY")
+TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
+TELEGRAM_CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
 
-HEADERS = {
-    "X-RapidAPI-Key": RAPID_API_KEY,
-    "X-RapidAPI-Host": "live-golf-data.p.rapidapi.com"
-}
+def send_telegram(message):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    requests.post(url, data={'chat_id': TELEGRAM_CHAT_ID, 'text': message})
 
-MY_PLAYERS = {
-    "Sungjae Im": "임성재",
-    "Si Woo Kim": "김시우",
-    "Tom Kim": "김주형"
-}
+def run_bot():
+    options = Options()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--window-size=1280,3000')
 
-# UTC → KST 시간 변환
-def utc_to_kst(utc_str):
-    utc_time = datetime.strptime(utc_str, "%Y-%m-%dT%H:%M:%SZ")
-    return (utc_time + timedelta(hours=9)).strftime("%H:%M")
+    driver = webdriver.Chrome(options=options)
 
-# 현재 진행 중 또는 예정된 대회 가져오기 (모든 대회 포함)
-def get_current_tournament():
-    url = "https://live-golf-data.p.rapidapi.com/tournaments"
-    res = requests.get(url, headers=HEADERS)
-    for t in res.json().get("tournaments", []):
-        if t["status"] in ["Scheduled", "In Progress"]:
-            return t
-    return None
+    url = 'https://www.pgatour.com/leaderboard.html'
+    driver.get(url)
+    time.sleep(10)
+    driver.save_screenshot("pga_leaderboard.png")
+    driver.quit()
 
-# 성적 메시지 생성
-def format_score_message(tournament_id, tournament_name):
-    url = f"https://live-golf-data.p.rapidapi.com/leaderboard?tournamentId={tournament_id}"
-    res = requests.get(url, headers=HEADERS)
-    data = res.json().get("leaderboard", [])
+    image = Image.open("pga_leaderboard.png")
+    image = image.convert('L')  # 흑백
+    image = image.resize((image.width * 2, image.height * 2))
+    image = ImageEnhance.Sharpness(image).enhance(2.0)
 
-    if not data:
-        return "PGA 리더보드를 불러올 수 없습니다."
+    config = r'--oem 3 --psm 6'
+    text = pytesseract.image_to_string(image, lang='eng', config=config)
 
-    msg = f"⛳️ [PGA 투어 성적 요약 - {tournament_name}]\n"
-    leader = data[0]
-    msg += f"🏆 선두: {leader['name']} : {leader['rank']}위({leader['total']})\n"
+    players = ['S. Im', 'S Im']
+    message_lines = []
 
-    my_players = [p for p in data if p["name"] in MY_PLAYERS]
-    if my_players:
-        msg += "\n⭐️ 소속 선수:\n"
-        for p in my_players:
-            msg += f"{MY_PLAYERS[p['name']]} : {p['rank']}위({p['total']})\n"
+    # 1. 선두 찾기 (1위 혹은 T1, T2부터 시작)
+    leader_line = ''
+    for line in text.splitlines():
+        if line.strip().startswith('1') or line.strip().startswith('T1'):
+            leader_line = line.strip()
+            break
+
+    leader_text = ''
+    if leader_line:
+        parts = leader_line.split()
+        try:
+            rank = parts[0]
+            name = f"{parts[1]} {parts[2]}" if '.' in parts[1] else parts[1]
+            score = parts[3]
+            leader_text = f"{name} : {rank}위({score})"
+        except:
+            leader_text = leader_line
+
+    # 2. 소속 선수 성적 찾기
+    player_results = []
+    for line in text.splitlines():
+        for player in players:
+            if player in line:
+                parts = line.split()
+                try:
+                    rank = parts[0]
+                    name = player
+                    score = parts[2] if '-' in parts[2] or '+' in parts[2] else 'N/A'
+                    player_results.append(f"{name} : {rank}위({score})")
+                except:
+                    player_results.append(f"{player} : {line.strip()}")
+
+    # 3. 최종 메시지 구성
+    final_message = "[PGA 성적 알림]\n\n"
+    if leader_text:
+        final_message += f"■ 선두\n{leader_text}\n\n"
+    if player_results:
+        final_message += "■ 소속 선수 성적\n" + "\n".join(player_results)
     else:
-        msg += "\n(소속 선수 없음)"
-    return msg
+        final_message += "■ 소속 선수 성적을 찾을 수 없습니다."
 
-# 티오프 메시지 생성
-def format_tee_time_message(tournament_id, tournament_name, start_date, end_date):
-    url = f"https://live-golf-data.p.rapidapi.com/teeTimes?tournamentId={tournament_id}"
-    res = requests.get(url, headers=HEADERS)
-    tee_times = res.json().get("teeTimes", [])
+    send_telegram(final_message)
 
-    msg = f"⛳️ [PGA 티오프 알림 - {tournament_name}]\n"
-    msg += f"📅 일정: {start_date} ~ {end_date}\n\n"
-    msg += "🕒 소속 선수 티오프 시간 (Round 1)\n"
-
-    found = False
-    for tee in tee_times:
-        if tee["round"] != 1:
-            continue
-        names = [p["name"] for p in tee["players"]]
-        for name in names:
-            if name in MY_PLAYERS:
-                found = True
-                others = [MY_PLAYERS.get(n, n) for n in names if n != name]
-                msg += f"- {MY_PLAYERS[name]}: {utc_to_kst(tee['teeTime'])} (KST) - [{', '.join(others)}]\n"
-    if not found:
-        msg += "(소속 선수 티오프 정보 없음)"
-    return msg
-
-# 텔레그램 메시지 전송
-def send_telegram_message(text):
-    try:
-        bot = Bot(token=TELEGRAM_TOKEN)
-        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=text)
-    except Exception as e:
-        print("텔레그램 전송 실패:", e)
-
-# 메인 실행
-if __name__ == "__main__":
-    t = get_current_tournament()
-    if t:
-        tid = t["id"]
-        name = t["name"]
-        status = t["status"]
-
-        if status == "Scheduled":
-            msg = format_tee_time_message(tid, name, t["startDate"], t["endDate"])
-        elif status == "In Progress":
-            msg = format_score_message(tid, name)
-        else:
-            msg = "알 수 없는 대회 상태입니다."
-    else:
-        msg = "현재 예정되거나 진행 중인 PGA 대회가 없습니다."
-
-    print(msg)
-    send_telegram_message(msg)
+if __name__ == '__main__':
+    run_bot()
