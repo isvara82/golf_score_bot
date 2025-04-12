@@ -1,42 +1,31 @@
-name: Daily Golf Score Alert
+name: Golf Score OCR Bot (PGA)
 
 on:
   schedule:
-    # 오전 7시 (KST) → 22:00 UTC (수~월)
-    - cron: "0 22 * * 3"  # 수요일
-    - cron: "0 22 * * 4"  # 목요일
-    - cron: "0 22 * * 5"  # 금요일
-    - cron: "0 22 * * 6"  # 토요일
-    - cron: "0 22 * * 0"  # 일요일
-    - cron: "0 22 * * 1"  # 월요일
-
-    # 오후 5시 (KST) → 08:00 UTC (목~일)
-    - cron: "0 8 * * 4"   # 목요일
-    - cron: "0 8 * * 5"   # 금요일
-    - cron: "0 8 * * 6"   # 토요일
-    - cron: "0 8 * * 0"   # 일요일
-
-  workflow_dispatch:  # 수동 실행 버튼 허용
+    - cron: '0 22 * * *'  # 오전 7시 KST
+    - cron: '8 8 * * *'   # 오후 5시 KST
+  workflow_dispatch:
 
 jobs:
-  run-golf-score:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    - uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-          
-      - name: Install dependencies
-        run: pip install requests python-telegram-bot==13.15
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
 
-      - name: Run golf_score.py
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          RAPID_API_KEY: ${{ secrets.RAPID_API_KEY }}
-        run: python golf_score.py
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tesseract-ocr libtesseract-dev chromium-chromedriver
+        pip install -r requirements.txt
+
+    - name: Run OCR Bot
+      env:
+        TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: python golf_score.py
