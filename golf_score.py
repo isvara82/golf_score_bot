@@ -1,103 +1,99 @@
 import os
-import time
-import requests
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from PIL import Image, ImageEnhance
+import cv2
 import pytesseract
+import requests
+from PIL import Image
+from io import BytesIO
+import numpy as np
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 
-# 텔레그램 봇 설정
-TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
-TELEGRAM_CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
+# 소속 선수 목록 (영문 기준)
+MY_PLAYERS = {
+    "임성재": "S. Im",
+    "양희영": "Amy Yang",
+    "황유민": "황유민",
+    "장유빈": "Yubin Jang",
+    "황중곤": "황중곤",
+    "이수민": "이수민",
+    "이태훈": "Taehoon LEE",
+    "김승민": "김승민",
+    "김현욱": "김현욱",
+    "최준희": "최준희",
+}
 
-# 크롬 경로 설정 (Google Chrome 직접 설치 기준)
-CHROME_PATH = "/usr/bin/google-chrome-stable"  # 기존: /usr/bin/google-chrome
-CHROMEDRIVER_PATH = "/usr/bin/chromedriver"
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-def send_telegram(message):
+def send_telegram_message(text):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    requests.post(url, data={'chat_id': TELEGRAM_CHAT_ID, 'text': message})
+    data = {"chat_id": TELEGRAM_CHAT_ID, "text": text}
+    requests.post(url, data=data)
+
+def format_score_line(rank: str, name: str, score: str):
+    return f"{name} : {rank}위({score})"
+
+def parse_ocr_lines(text):
+    lines = text.splitlines()
+    results = []
+    for line in lines:
+        line = line.strip()
+        if not line or "PLAYER" in line or "POS" in line:
+            continue
+        parts = line.split()
+        # 라인에 최소 3개 요소 있어야 (순위, 이름, 스코어)
+        if len(parts) >= 3:
+            rank = parts[0].replace("S", "5").replace("T", "T")  # TS → T5 등
+            name = " ".join(parts[1:-2])
+            score = parts[-3] if parts[-3].startswith('-') or parts[-3].startswith('+') else "-" + parts[-3]
+            results.append((rank, name, score))
+    return results
 
 def run_bot():
-    # Selenium 옵션 설정
+    # 셀레니움 설정
     options = Options()
-    options.binary_location = CHROME_PATH
-    options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--window-size=1280,3000')
+    options.binary_location = "/usr/bin/google-chrome-stable"
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
 
-    service = Service(CHROMEDRIVER_PATH)
+    service = Service()
     driver = webdriver.Chrome(service=service, options=options)
 
-    # PGA 리더보드 접속
-    url = 'https://www.pgatour.com/leaderboard.html'
+    # PGA 리더보드 이미지 캡처할 주소
+    url = "https://www.pgatour.com/leaderboard.html"  # 실제 URL로 바꿔도 됨
     driver.get(url)
-    time.sleep(10)  # 충분히 로딩 기다리기
-    driver.save_screenshot("pga_leaderboard.png")
+    driver.set_window_size(1920, 1080)
+    screenshot = driver.get_screenshot_as_png()
     driver.quit()
 
-    # 이미지 전처리 (흑백 + 확대 + 선명화)
-    image = Image.open("pga_leaderboard.png")
-    image = image.convert('L')  # 흑백
-    image = image.resize((image.width * 2, image.height * 2))  # 확대
-    image = ImageEnhance.Sharpness(image).enhance(2.0)  # 선명도 증가
+    # 이미지 전처리
+    image = Image.open(BytesIO(screenshot))
+    gray = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2GRAY)
+    _, thresh = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY_INV)
+    text = pytesseract.image_to_string(thresh, lang="eng")
 
-    # OCR 실행
-    config = r'--oem 3 --psm 6'
-    text = pytesseract.image_to_string(image, lang='eng', config=config)
+    parsed = parse_ocr_lines(text)
 
-    # OCR 원문 로그 출력 (GitHub Actions에서 확인 가능)
-    print("\n--- OCR RAW TEXT START ---\n")
-    print(text)
-    print("\n--- OCR RAW TEXT END ---\n")
+    # 소속 선수 추출
+    my_lines = []
+    for kor_name, eng_name in MY_PLAYERS.items():
+        for rank, name, score in parsed:
+            if eng_name in name:
+                my_lines.append(format_score_line(rank, kor_name, score))
+                break
 
-    # 선수 목록 (임성재)
-    players = ['S. Im', 'S Im']
+    # 선두 선수 추출
+    leader_line = parsed[0] if parsed else None
+    leader_str = format_score_line(*leader_line) if leader_line else "정보 없음"
 
-    # 1. 선두 추출
-    leader_line = ''
-    for line in text.splitlines():
-        if line.strip().startswith('1') or line.strip().startswith('T1'):
-            leader_line = line.strip()
-            break
+    # 메시지 구성
+    message = "■ PGA 투어 성적\n\n[소속 선수]\n"
+    message += "\n".join(my_lines) if my_lines else "해당 없음"
+    message += f"\n\n[선두 선수]\n{leader_str}"
 
-    leader_text = ''
-    if leader_line:
-        parts = leader_line.split()
-        try:
-            rank = parts[0]
-            name = f"{parts[1]} {parts[2]}" if '.' in parts[1] else parts[1]
-            score = parts[3]
-            leader_text = f"{name} : {rank}위({score})"
-        except:
-            leader_text = leader_line
+    send_telegram_message(message)
 
-    # 2. 소속 선수 성적 추출
-    player_results = []
-    for line in text.splitlines():
-        for player in players:
-            if player in line:
-                parts = line.split()
-                try:
-                    rank = parts[0]
-                    name = player
-                    score = parts[2] if '-' in parts[2] or '+' in parts[2] else 'N/A'
-                    player_results.append(f"{name} : {rank}위({score})")
-                except:
-                    player_results.append(f"{player} : {line.strip()}")
-
-    # 3. 메시지 구성
-    final_message = "[PGA 성적 알림]\n\n"
-    if leader_text:
-        final_message += f"■ 선두\n{leader_text}\n\n"
-    if player_results:
-        final_message += "■ 소속 선수 성적\n" + "\n".join(player_results)
-    else:
-        final_message += "■ 소속 선수 성적을 찾을 수 없습니다."
-
-    send_telegram(final_message)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_bot()
