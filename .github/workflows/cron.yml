@@ -2,13 +2,14 @@ name: Golf Score OCR Bot (PGA)
 
 on:
   schedule:
-    - cron: '0 22 * * *'  # 오전 7시 KST
-    - cron: '8 8 * * *'   # 오후 5시 KST
+    - cron: '0 22 * * *'  # 오전 7시 (KST)
+    - cron: '8 8 * * *'   # 오후 5시 (KST)
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # 최대 실행 시간 제한 (예방)
 
     steps:
     - uses: actions/checkout@v3
@@ -18,12 +19,21 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install dependencies
+    # Tesseract 설치
+    - name: Install Tesseract OCR
       run: |
         sudo apt-get update
-        sudo apt-get install -y tesseract-ocr libtesseract-dev chromium-chromedriver
-        pip install -r requirements.txt
+        sudo apt-get install -y tesseract-ocr libtesseract-dev
 
+    # 크롬드라이버 설치
+    - name: Install ChromeDriver
+      run: sudo apt-get install -y chromium-chromedriver
+
+    # Python 라이브러리 설치
+    - name: Install Python dependencies
+      run: pip install -r requirements.txt
+
+    # OCR 봇 실행
     - name: Run OCR Bot
       env:
         TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
