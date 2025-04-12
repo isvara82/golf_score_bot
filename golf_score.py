@@ -6,6 +6,7 @@ from selenium.webdriver.chrome.options import Options
 from PIL import Image, ImageEnhance
 import pytesseract
 
+# GitHub Secrets에서 불러오는 정보
 TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
 TELEGRAM_CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
 
@@ -14,6 +15,7 @@ def send_telegram(message):
     requests.post(url, data={'chat_id': TELEGRAM_CHAT_ID, 'text': message})
 
 def run_bot():
+    # 셀레니움 설정
     options = Options()
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
@@ -21,25 +23,32 @@ def run_bot():
     options.add_argument('--window-size=1280,3000')
 
     driver = webdriver.Chrome(options=options)
-
     url = 'https://www.pgatour.com/leaderboard.html'
     driver.get(url)
     time.sleep(10)
     driver.save_screenshot("pga_leaderboard.png")
     driver.quit()
 
+    # 이미지 전처리
     image = Image.open("pga_leaderboard.png")
     image = image.convert('L')  # 흑백
-    image = image.resize((image.width * 2, image.height * 2))
-    image = ImageEnhance.Sharpness(image).enhance(2.0)
+    image = image.resize((image.width * 2, image.height * 2))  # 확대
+    image = ImageEnhance.Sharpness(image).enhance(2.0)  # 선명화
 
+    # OCR 실행
     config = r'--oem 3 --psm 6'
     text = pytesseract.image_to_string(image, lang='eng', config=config)
 
+    # 로그에 OCR 원문 출력
+    print("\n--- OCR RAW TEXT START ---\n")
+    print(text)
+    print("\n--- OCR RAW TEXT END ---\n")
+
+    # 대상 선수
     players = ['S. Im', 'S Im']
     message_lines = []
 
-    # 1. 선두 찾기 (1위 혹은 T1, T2부터 시작)
+    # 1. 선두 줄 추출
     leader_line = ''
     for line in text.splitlines():
         if line.strip().startswith('1') or line.strip().startswith('T1'):
@@ -57,7 +66,7 @@ def run_bot():
         except:
             leader_text = leader_line
 
-    # 2. 소속 선수 성적 찾기
+    # 2. 소속 선수 성적 추출
     player_results = []
     for line in text.splitlines():
         for player in players:
@@ -71,7 +80,7 @@ def run_bot():
                 except:
                     player_results.append(f"{player} : {line.strip()}")
 
-    # 3. 최종 메시지 구성
+    # 3. 메시지 조립
     final_message = "[PGA 성적 알림]\n\n"
     if leader_text:
         final_message += f"■ 선두\n{leader_text}\n\n"
