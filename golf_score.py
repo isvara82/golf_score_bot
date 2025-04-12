@@ -12,7 +12,7 @@ TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
 TELEGRAM_CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
 
 # 크롬 경로 설정 (Google Chrome 직접 설치 기준)
-CHROME_PATH = "/usr/bin/google-chrome"
+CHROME_PATH = "/usr/bin/google-chrome-stable"  # 기존: /usr/bin/google-chrome
 CHROMEDRIVER_PATH = "/usr/bin/chromedriver"
 
 def send_telegram(message):
