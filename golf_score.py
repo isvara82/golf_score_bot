@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
 TELEGRAM_CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
 
+# 소속 선수명 (영문 기준)
 players = {
     '황중곤': 'Hwang Jung-gon',
     '이수민': 'Soo-min LEE',
@@ -39,15 +40,13 @@ def run_bot():
     url = 'https://www.kpga.co.kr/tours/game/game/?tourId=11&year=2025&gameId=202511000002M&type=leaderboard'
     driver.get(url)
 
-    # full page 저장 (무조건 저장)
     time.sleep(2)
     with open("full_debug.html", "w", encoding="utf-8") as f:
         f.write(driver.page_source)
 
-    # table 로딩 대기
     try:
         WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "table tbody tr"))
+            EC.presence_of_element_located((By.CSS_SELECTOR, "table.leaderboard-table2 tbody tr"))
         )
     except:
         print("[ERROR] 리더보드 테이블 로딩 실패")
@@ -56,7 +55,7 @@ def run_bot():
     driver.quit()
 
     soup = BeautifulSoup(html, 'html.parser')
-    rows = soup.select('table tbody tr')
+    rows = soup.select('table.leaderboard-table2 tbody tr')
 
     leader_info = ''
     player_infos = []
@@ -66,12 +65,12 @@ def run_bot():
             cols = row.find_all('td')
             if len(cols) < 8:
                 continue
-            rank = cols[0].text.strip()
-            name = cols[2].text.strip()
-            score = cols[7].text.strip()
+            rank = cols[1].text.strip()
+            name = cols[4].text.strip()
+            score = cols[5].text.strip()
             f.write(f"[DEBUG] name = {name}, rank = {rank}, score = {score}\n")
 
-            if i == 0:
+            if not leader_info and rank and score:
                 leader_info = f"{name} : {rank}위({score})"
 
             for kor_name, eng_name in players.items():
