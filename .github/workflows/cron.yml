@@ -34,8 +34,8 @@ jobs:
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       run: python golf_score.py
 
-    - name: Show debug log
+    - name: Show debug log (크롤링된 선수 목록)
       run: cat debug_log.txt || echo "debug_log.txt 없음"
 
-    - name: Show HTML preview (상단 100줄)
-      run: head -n 100 page_dump.html || echo "page_dump.html 없음"
+    - name: Show full HTML head (리더보드 전체 구조 확인)
+      run: head -n 150 full_debug.html || echo "full_debug.html 없음"
