@@ -2,14 +2,14 @@ name: Golf Score OCR Bot (KPGA)
 
 on:
   schedule:
-    - cron: '0 22 * * *'  # 오전 7시 KST
-    - cron: '8 8 * * *'   # 오후 5시 KST
+    - cron: '0 22 * * *'  # 오전 7시 (KST)
+    - cron: '8 8 * * *'   # 오후 5시 (KST)
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # Snap 타임아웃 방지
+    timeout-minutes: 30  # Snap 설치 시간 초과 방지
 
     steps:
     - uses: actions/checkout@v3
@@ -28,7 +28,7 @@ jobs:
     - name: Install Chromium & ChromeDriver (APT 방식)
       run: |
         sudo apt-get install -y chromium-browser chromium-chromedriver
-        sudo ln -sf /usr/lib/chromium-browser/chromedriver /usr/bin/chromedriver
+        sudo ln -sf /usr/lib/chromium-browser/chromedriver /usr/bin/chromedriver || true
 
     - name: Install Python dependencies
       run: pip install -r requirements.txt
