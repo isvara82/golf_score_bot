@@ -45,7 +45,7 @@ def run_bot():
     driver = webdriver.Chrome(service=service, options=options)
 
     # KPGA 리더보드 페이지 접속
-    url = 'https://www.kpga.co.kr/tours/game/game/?tourId=&gameId=&type=leaderboard'
+    url = 'https://www.kpga.co.kr/tours/game/game/?tourId=11&year=2025&gameId=202511000002M&type=leaderboard'
     driver.get(url)
     time.sleep(10)
     driver.save_screenshot("kpga_leaderboard.png")
