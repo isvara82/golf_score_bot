@@ -39,10 +39,15 @@ def run_bot():
     url = 'https://www.kpga.co.kr/tours/game/game/?tourId=11&year=2025&gameId=202511000002M&type=leaderboard'
     driver.get(url)
 
-    # ✅ table이 로드될 때까지 기다리기 (최대 15초)
+    # full page 저장 (무조건 저장)
+    time.sleep(2)
+    with open("full_debug.html", "w", encoding="utf-8") as f:
+        f.write(driver.page_source)
+
+    # table 로딩 대기
     try:
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "table.score_table tbody tr"))
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "table tbody tr"))
         )
     except:
         print("[ERROR] 리더보드 테이블 로딩 실패")
@@ -50,11 +55,8 @@ def run_bot():
     html = driver.page_source
     driver.quit()
 
-    with open("page_dump.html", "w", encoding="utf-8") as f:
-        f.write(html)
-
     soup = BeautifulSoup(html, 'html.parser')
-    rows = soup.select('table.score_table tbody tr')
+    rows = soup.select('table tbody tr')
 
     leader_info = ''
     player_infos = []
@@ -67,7 +69,6 @@ def run_bot():
             rank = cols[0].text.strip()
             name = cols[2].text.strip()
             score = cols[7].text.strip()
-
             f.write(f"[DEBUG] name = {name}, rank = {rank}, score = {score}\n")
 
             if i == 0:
