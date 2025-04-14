@@ -1,41 +1,41 @@
-name: Golf Score KPGA Bot (HTML 파싱)
+name: Run KPGA Score Bot
 
 on:
-  schedule:
-    - cron: '0 22 * * *'  # 오전 7시 (KST)
-    - cron: '8 8 * * *'   # 오후 5시 (KST)
   workflow_dispatch:
+  schedule:
+    - cron: '0 22 * * *'  # 매일 오전 7시 (KST 기준) 실행
 
 jobs:
-  build:
+  run-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    env:
+      TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@v3
 
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
 
-    - name: Install Chrome
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install selenium beautifulsoup4 python-telegram-bot
+
+    - name: Install Chrome and ChromeDriver
       run: |
         sudo apt-get update
-        sudo apt-get install -y google-chrome-stable wget curl unzip gnupg
-        sudo ln -sf /usr/bin/google-chrome /usr/bin/chrome || true
+        sudo apt-get install -y wget unzip xvfb
+        CHROME_VERSION=$(google-chrome --version | grep -oP '\d+' | head -1)
+        wget -q -O chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/$CHROME_VERSION.0.0/linux64/chromedriver-linux64.zip"
+        unzip chromedriver.zip
+        sudo mv chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
+        sudo chmod +x /usr/local/bin/chromedriver
 
-    - name: Install Python dependencies
-      run: pip install -r requirements.txt
-
-    - name: Run KPGA Bot
-      env:
-        TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      run: python golf_score.py
-
-    - name: Show debug log (크롤링된 선수 목록)
-      run: cat debug_log.txt || echo "debug_log.txt 없음"
-
-    - name: Show full HTML head (리더보드 전체 구조 확인)
-      run: head -n 150 full_debug.html || echo "full_debug.html 없음"
+    - name: Run KPGA bot
+      run: |
+        python golf_score.py
