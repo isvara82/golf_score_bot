@@ -1,36 +1,35 @@
-name: KPGA Results Scraper
+name: KPGA Results Scraper # 워크플로우 이름
 
 on:
-  # workflow_dispatch: # GitHub Actions 탭에서 수동으로 실행 가능하게 함
+  workflow_dispatch: # GitHub Actions 탭에서 수동으로 실행 가능하게 함
   schedule:
     # 매일 오전 9시 30분(KST)에 실행 (UTC 기준 00:30)
-    # 참고: GitHub Actions 스케줄은 약간의 지연이 있을 수 있습니다.
+    # Cron 구문: 분 시 일 월 요일 ( '*'는 '매번'을 의미)
     - cron: '30 0 * * *'
 
 jobs:
-  scrape-and-notify:
-    runs-on: ubuntu-latest # 실행 환경 지정 (리눅스 최신 버전)
+  scrape-and-notify: # 작업 ID
+    runs-on: ubuntu-latest # 실행 환경 (운영체제)
 
-    steps:
-      - name: Checkout code # 저장소의 코드를 runner 환경으로 가져옴
-        uses: actions/checkout@v4
+    steps: # 실행할 단계 목록
+      - name: Checkout code # 1단계: 저장소 코드 가져오기
+        uses: actions/checkout@v4 # 표준 GitHub Action 사용
 
-      - name: Set up Python # 파이썬 환경 설정
-        uses: actions/setup-python@v5
+      - name: Set up Python # 2단계: 파이썬 환경 준비
+        uses: actions/setup-python@v5 # 표준 GitHub Action 사용
         with:
-          python-version: '3.11' # 사용할 파이썬 버전 지정
+          python-version: '3.11' # 사용할 파이썬 버전 명시
 
-      # ▼▼▼ 여기가 수정되었습니다 ▼▼▼
-      - name: Install dependencies # requirements.txt 로 라이브러리 설치
-        run: |
+      - name: Install dependencies # 3단계: 필요한 라이브러리 설치
+        run: | # 실행할 명령어들
           python -m pip install --upgrade pip
           # requirements.txt 파일이 있으면 해당 파일로 라이브러리 설치
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-      # ▲▲▲ 여기가 수정되었습니다 ▲▲▲
 
-      - name: Run scraper script # 파이썬 스크립트 실행
-        env: # GitHub Secrets 값을 환경 변수로 주입
+      - name: Run scraper script # 4단계: 메인 파이썬 스크립트 실행
+        env: # 스크립트 실행 시 사용할 환경 변수 설정
+          # GitHub 저장소 Secrets에 설정된 값을 가져와 환경 변수로 만듦
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python Golf_score.py # 실행할 파이썬 파일 이름
-
+        # 실행할 명령어 (파이썬 인터프리터로 Golf_score.py 실행)
+        run: python Golf_score.py
