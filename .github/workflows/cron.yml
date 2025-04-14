@@ -3,11 +3,12 @@ name: Run KPGA Score Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 22 * * *'  # 매일 오전 7시 (KST 기준)
+    - cron: '0 22 * * *'  # 매일 오전 7시 (KST 기준) 실행
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+
     env:
       TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -21,16 +22,17 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install Python dependencies
+    - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install selenium beautifulsoup4 python-telegram-bot webdriver-manager requests
+        pip install selenium beautifulsoup4 python-telegram-bot webdriver-manager
 
     - name: Install Google Chrome
       run: |
-        wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-        sudo apt install -y ./google-chrome-stable_current_amd64.deb
-        google-chrome --version
+        wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+        sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
 
     - name: Run KPGA bot
       run: |
