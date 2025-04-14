@@ -10,11 +10,9 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 
-# 텔레그램 설정
 TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
 TELEGRAM_CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
 
-# 소속 선수명 (영문 기준)
 players = {
     '황중곤': 'Hwang Jung-gon',
     '이수민': 'Soo-min LEE',
@@ -40,22 +38,18 @@ def run_bot():
     url = 'https://www.kpga.co.kr/tours/game/game/?tourId=11&year=2025&gameId=202511000002M&type=leaderboard'
     driver.get(url)
 
+    # 리더보드 로딩 대기
     try:
-        # ✅ 선수 정보가 들어가는 4번째 tr의 td 셀까지 기다림
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "table.leaderboard-table2 tbody tr:nth-child(4) td"))
         )
     except:
-        with open("debug_log.txt", "w", encoding="utf-8") as f:
-            f.write("[ERROR] 리더보드 테이블 로딩 실패\n")
-        send_telegram("[KPGA 성적 알림]\n\n[ERROR] 리더보드 테이블 로딩 실패")
-        driver.quit()
+        print("[ERROR] 리더보드 테이블 로딩 실패")
+        with open("full_debug.html", "w", encoding="utf-8") as f:
+            f.write(driver.page_source)
         return
 
     html = driver.page_source
-    with open("full_debug.html", "w", encoding="utf-8") as f:
-        f.write(html)
-
     driver.quit()
 
     soup = BeautifulSoup(html, 'html.parser')
