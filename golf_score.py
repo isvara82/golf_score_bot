@@ -1,21 +1,10 @@
 import os
-import time
 import requests
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 
 # 텔레그램 설정
 TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
 TELEGRAM_CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
-
-# Chrome 경로
-CHROME_PATH = "/usr/bin/google-chrome"
-CHROMEDRIVER_PATH = "/usr/local/bin/chromedriver"
 
 # 소속 선수 목록
 players = [
@@ -28,50 +17,28 @@ def send_telegram(message):
     requests.post(url, data={'chat_id': TELEGRAM_CHAT_ID, 'text': message})
 
 def run_bot():
-    # Selenium 옵션 설정
-    options = Options()
-    options.binary_location = CHROME_PATH
-    options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    service = Service(CHROMEDRIVER_PATH)
-    driver = webdriver.Chrome(service=service, options=options)
+    # KPGA 실제 성적 페이지 (iframe 내부 주소)
+    url = 'https://www.kpga.co.kr/tours/game/score/?tourId=11&year=2025&gameId=202511000002M'
 
-    # 메인 리더보드 페이지 접속
-    main_url = 'https://www.kpga.co.kr/tours/game/game/?tourId=11&year=2025&gameId=202511000002M&type=leaderboard'
-    driver.get(main_url)
-    time.sleep(2)
+    # headers에 Referer 필수
+    headers = {
+        "Referer": "https://www.kpga.co.kr/tours/game/game/?tourId=11&year=2025&gameId=202511000002M&type=leaderboard",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+    }
 
-    # iframe 내부의 실제 스코어 페이지 URL 추출
     try:
-        iframe = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "iframe#ifrmScoreCard"))
-        )
-        iframe_url = iframe.get_attribute("src")
-    except:
-        send_telegram("[KPGA 성적 알림]\n\niframe 로딩에 실패했습니다.")
-        driver.quit()
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+    except Exception as e:
+        send_telegram(f"[KPGA 성적 알림]\n\n데이터 요청 실패: {e}")
         return
 
-    # iframe 페이지로 이동
-    driver.get(iframe_url)
-
-    # 테이블 로딩 대기
-    try:
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "table.score_table tbody tr"))
-        )
-    except:
-        send_telegram("[KPGA 성적 알림]\n\n리더보드 테이블 로딩에 실패했습니다.")
-        driver.quit()
-        return
-
-    # 실제 페이지 소스 가져오기
-    html = driver.page_source
-    driver.quit()
-
-    soup = BeautifulSoup(html, 'html.parser')
+    soup = BeautifulSoup(response.text, 'html.parser')
     rows = soup.select('table.score_table tbody tr')
+
+    if not rows:
+        send_telegram("[KPGA 성적 알림]\n\n리더보드 테이블이 비어있습니다.")
+        return
 
     leader_info = ''
     player_infos = []
@@ -83,7 +50,7 @@ def run_bot():
 
         rank = cols[0].text.strip()
         name = cols[2].text.strip()
-        score = cols[7].text.strip()  # Total 컬럼
+        score = cols[7].text.strip()
 
         if i == 0:
             leader_info = f"{name} : {rank}위({score})"
@@ -92,7 +59,6 @@ def run_bot():
             if p in name:
                 player_infos.append(f"{name} : {rank}위({score})")
 
-    # 텔레그램 메시지 구성
     message = "[KPGA 성적 알림]\n\n"
     if leader_info:
         message += f"■ 선두\n{leader_info}\n\n"
