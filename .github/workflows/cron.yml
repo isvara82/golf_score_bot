@@ -2,8 +2,8 @@ name: Golf Score KPGA Bot (HTML 파싱)
 
 on:
   schedule:
-    - cron: '0 22 * * *'  # 오전 7시 KST
-    - cron: '8 8 * * *'   # 오후 5시 KST
+    - cron: '0 22 * * *'  # 오전 7시 (KST)
+    - cron: '8 8 * * *'   # 오후 5시 (KST)
   workflow_dispatch:
 
 jobs:
@@ -30,9 +30,8 @@ jobs:
 
     - name: Install matching ChromeDriver
       run: |
-        CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+\.\d+' | head -1)
-        SHORT_VERSION=$(echo $CHROME_VERSION | cut -d '.' -f 1-3)
-        DRIVER_VERSION=$(curl -sSL "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$SHORT_VERSION")
+        CHROME_VERSION=$(google-chrome --version | grep -oP 'Google Chrome \K\d+' | head -1)
+        DRIVER_VERSION=$(curl -sSL "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
         wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/$DRIVER_VERSION/chromedriver_linux64.zip"
         unzip /tmp/chromedriver.zip -d /usr/local/bin
         chmod +x /usr/local/bin/chromedriver
