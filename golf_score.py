@@ -5,7 +5,6 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
@@ -38,12 +37,24 @@ def run_bot():
     service = Service(CHROMEDRIVER_PATH)
     driver = webdriver.Chrome(service=service, options=options)
 
-    url = 'https://www.kpga.co.kr/tours/game/game/?tourId=11&year=2025&gameId=202511000002M&type=leaderboard'
-    driver.get(url)
-
-    # 스크롤로 로딩 유도
-    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    # 메인 리더보드 페이지 접속
+    main_url = 'https://www.kpga.co.kr/tours/game/game/?tourId=11&year=2025&gameId=202511000002M&type=leaderboard'
+    driver.get(main_url)
     time.sleep(2)
+
+    # iframe 내부의 실제 스코어 페이지 URL 추출
+    try:
+        iframe = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "iframe#ifrmScoreCard"))
+        )
+        iframe_url = iframe.get_attribute("src")
+    except:
+        send_telegram("[KPGA 성적 알림]\n\niframe 로딩에 실패했습니다.")
+        driver.quit()
+        return
+
+    # iframe 페이지로 이동
+    driver.get(iframe_url)
 
     # 테이블 로딩 대기
     try:
@@ -55,18 +66,12 @@ def run_bot():
         driver.quit()
         return
 
-    # ✅ 실제 렌더링된 테이블 HTML만 DOM에서 직접 추출
-    try:
-        table_html = driver.execute_script("return document.querySelector('table.score_table').outerHTML")
-    except:
-        send_telegram("[KPGA 성적 알림]\n\n리더보드 테이블 DOM 추출에 실패했습니다.")
-        driver.quit()
-        return
-
+    # 실제 페이지 소스 가져오기
+    html = driver.page_source
     driver.quit()
 
-    soup = BeautifulSoup(table_html, 'html.parser')
-    rows = soup.select('tbody tr')
+    soup = BeautifulSoup(html, 'html.parser')
+    rows = soup.select('table.score_table tbody tr')
 
     leader_info = ''
     player_infos = []
@@ -80,16 +85,14 @@ def run_bot():
         name = cols[2].text.strip()
         score = cols[7].text.strip()  # Total 컬럼
 
-        # 선두 추출
         if i == 0:
             leader_info = f"{name} : {rank}위({score})"
 
-        # 소속 선수 성적
         for p in players:
             if p in name:
                 player_infos.append(f"{name} : {rank}위({score})")
 
-    # 텔레그램 메시지
+    # 텔레그램 메시지 구성
     message = "[KPGA 성적 알림]\n\n"
     if leader_info:
         message += f"■ 선두\n{leader_info}\n\n"
