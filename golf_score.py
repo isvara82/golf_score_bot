@@ -41,7 +41,7 @@ def run_bot():
     url = 'https://www.kpga.co.kr/tours/game/game/?tourId=11&year=2025&gameId=202511000002M&type=leaderboard'
     driver.get(url)
 
-    # 강제 스크롤 → 테이블 렌더링 유도
+    # 스크롤로 로딩 유도
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
     time.sleep(2)
 
@@ -55,12 +55,18 @@ def run_bot():
         driver.quit()
         return
 
-    # HTML 파싱
-    html = driver.page_source
+    # ✅ 실제 렌더링된 테이블 HTML만 DOM에서 직접 추출
+    try:
+        table_html = driver.execute_script("return document.querySelector('table.score_table').outerHTML")
+    except:
+        send_telegram("[KPGA 성적 알림]\n\n리더보드 테이블 DOM 추출에 실패했습니다.")
+        driver.quit()
+        return
+
     driver.quit()
 
-    soup = BeautifulSoup(html, 'html.parser')
-    rows = soup.select('table.score_table tbody tr')
+    soup = BeautifulSoup(table_html, 'html.parser')
+    rows = soup.select('tbody tr')
 
     leader_info = ''
     player_infos = []
@@ -78,12 +84,12 @@ def run_bot():
         if i == 0:
             leader_info = f"{name} : {rank}위({score})"
 
-        # 소속 선수 매칭
+        # 소속 선수 성적
         for p in players:
             if p in name:
                 player_infos.append(f"{name} : {rank}위({score})")
 
-    # 텔레그램 메시지 구성
+    # 텔레그램 메시지
     message = "[KPGA 성적 알림]\n\n"
     if leader_info:
         message += f"■ 선두\n{leader_info}\n\n"
