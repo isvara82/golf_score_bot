@@ -47,27 +47,25 @@ def run_bot():
     leader_info = ''
     player_infos = []
 
-    for i, row in enumerate(rows):
-        cols = row.find_all('td')
-        if len(cols) < 8:
-            continue
+    with open("debug_log.txt", "w", encoding="utf-8") as f:
+        for i, row in enumerate(rows):
+            cols = row.find_all('td')
+            if len(cols) < 8:
+                continue
 
-        rank = cols[0].text.strip()
-        name = cols[2].text.strip()
-        score = cols[7].text.strip()
+            rank = cols[0].text.strip()
+            name = cols[2].text.strip()
+            score = cols[7].text.strip()
 
-        # 디버깅용 로그
-        print(f"[DEBUG] name = {name}, rank = {rank}, score = {score}")
+            f.write(f"[DEBUG] name = {name}, rank = {rank}, score = {score}\n")
 
-        # 첫 번째 줄은 선두
-        if i == 0:
-            leader_info = f"{name} : {rank}위({score})"
+            if i == 0:
+                leader_info = f"{name} : {rank}위({score})"
 
-        for kor_name, eng_name in players.items():
-            if eng_name.lower() in name.lower():
-                player_infos.append(f"{eng_name} : {rank}위({score})")
+            for kor_name, eng_name in players.items():
+                if eng_name.lower() in name.lower():
+                    player_infos.append(f"{eng_name} : {rank}위({score})")
 
-    # 메시지 조립
     message = "[KPGA 성적 알림]\n\n"
     if leader_info:
         message += f"■ 선두\n{leader_info}\n\n"
@@ -78,5 +76,7 @@ def run_bot():
 
     send_telegram(message)
 
+if __name__ == '__main__':
+    run_bot()
 if __name__ == '__main__':
     run_bot()
