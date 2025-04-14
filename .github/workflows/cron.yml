@@ -2,14 +2,14 @@ name: Golf Score KPGA Bot (HTML 파싱)
 
 on:
   schedule:
-    - cron: '0 22 * * *'  # 오전 7시 (KST)
-    - cron: '8 8 * * *'   # 오후 5시 (KST)
+    - cron: '0 22 * * *'  # 오전 7시 KST
+    - cron: '8 8 * * *'   # 오후 5시 KST
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 15  # Snap 타임아웃 방지
 
     steps:
     - uses: actions/checkout@v3
@@ -19,11 +19,18 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install Chrome & ChromeDriver
+    - name: Install Google Chrome & ChromeDriver
       run: |
         sudo apt-get update
-        sudo apt-get install -y chromium-browser chromium-chromedriver
-        sudo ln -sf /usr/lib/chromium-browser/chromedriver /usr/bin/chromedriver || true
+        sudo apt-get install -y wget gnupg unzip
+        wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+        echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        LATEST=$(curl -sSL https://chromedriver.storage.googleapis.com/LATEST_RELEASE)
+        wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/$LATEST/chromedriver_linux64.zip
+        unzip /tmp/chromedriver.zip -d /usr/local/bin
+        chmod +x /usr/local/bin/chromedriver
 
     - name: Install Python dependencies
       run: pip install -r requirements.txt
