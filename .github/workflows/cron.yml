@@ -3,7 +3,7 @@ name: Run KPGA Score Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 22 * * *'  # 매일 오전 7시 (KST)
+    - cron: '0 22 * * *'  # 매일 오전 7시 (KST 기준) 실행
 
 jobs:
   run-bot:
@@ -23,7 +23,8 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install selenium beautifulsoup4 requests webdriver-manager
+        python -m pip install --upgrade pip
+        pip install selenium beautifulsoup4 python-telegram-bot
 
     - name: Install Chrome and ChromeDriver
       run: |
@@ -31,11 +32,15 @@ jobs:
         sudo apt-get install -y wget unzip curl
         wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
         sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get -f install -y
-        CHROME_VERSION=$(google-chrome --version | grep -oP '\d+' | head -1)
-        wget -O chromedriver.zip "https://storage.googleapis.com/chrome-for-testing-public/$CHROME_VERSION.0.0/linux64/chromedriver-linux64.zip"
+
+        CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+\.\d+')
+        echo "Installed Chrome version: $CHROME_VERSION"
+
+        wget -O chromedriver.zip "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$CHROME_VERSION/linux64/chromedriver-linux64.zip"
         unzip chromedriver.zip
         sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
         sudo chmod +x /usr/local/bin/chromedriver
 
     - name: Run KPGA bot
-      run: python golf_score.py
+      run: |
+        python golf_score.py
