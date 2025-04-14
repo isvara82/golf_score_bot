@@ -19,22 +19,11 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install Google Chrome
+    - name: Install Chrome dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y wget curl gnupg unzip
-        wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-        echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
-        sudo apt-get update
-        sudo apt-get install -y google-chrome-stable
-
-    - name: Install matching ChromeDriver
-      run: |
-        CHROME_VERSION=$(google-chrome --version | grep -oP 'Google Chrome \K\d+' | head -1)
-        DRIVER_VERSION=$(curl -sSL "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
-        wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/$DRIVER_VERSION/chromedriver_linux64.zip"
-        unzip /tmp/chromedriver.zip -d /usr/local/bin
-        chmod +x /usr/local/bin/chromedriver
+        sudo apt-get install -y google-chrome-stable wget curl unzip gnupg
+        sudo ln -sf /usr/bin/google-chrome /usr/bin/chrome || true
 
     - name: Install Python dependencies
       run: pip install -r requirements.txt
