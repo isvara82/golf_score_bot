@@ -4,14 +4,16 @@ import requests
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 
-# 텔레그램 봇 설정
+# 텔레그램 설정
 TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
 TELEGRAM_CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
 
-# 소속 선수 매핑 (한글 이름: 리더보드 상 영문 표기)
 players = {
     '황중곤': 'Hwang Jung-gon',
     '이수민': 'Soo-min LEE',
@@ -31,17 +33,23 @@ def run_bot():
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
 
-    # ChromeDriver 자동 설치 및 실행
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
 
     url = 'https://www.kpga.co.kr/tours/game/game/?tourId=11&year=2025&gameId=202511000002M&type=leaderboard'
     driver.get(url)
-    time.sleep(5)  # JS 로딩 시간
+
+    # ✅ table이 로드될 때까지 기다리기 (최대 15초)
+    try:
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "table.score_table tbody tr"))
+        )
+    except:
+        print("[ERROR] 리더보드 테이블 로딩 실패")
+
     html = driver.page_source
     driver.quit()
 
-    # HTML 저장 (디버깅용)
     with open("page_dump.html", "w", encoding="utf-8") as f:
         f.write(html)
 
@@ -56,7 +64,6 @@ def run_bot():
             cols = row.find_all('td')
             if len(cols) < 8:
                 continue
-
             rank = cols[0].text.strip()
             name = cols[2].text.strip()
             score = cols[7].text.strip()
