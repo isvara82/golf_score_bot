@@ -4,7 +4,6 @@ on:
   workflow_dispatch: # GitHub Actions 탭에서 수동으로 실행 가능하게 함
   schedule:
     # 매일 오전 9시 30분(KST)에 실행 (UTC 기준 00:30)
-    # Cron 구문: 분 시 일 월 요일 ( '*'는 '매번'을 의미)
     - cron: '30 0 * * *'
 
 jobs:
@@ -13,23 +12,24 @@ jobs:
 
     steps: # 실행할 단계 목록
       - name: Checkout code # 1단계: 저장소 코드 가져오기
-        uses: actions/checkout@v4 # 표준 GitHub Action 사용
+        uses: actions/checkout@v4
 
       - name: Set up Python # 2단계: 파이썬 환경 준비
-        uses: actions/setup-python@v5 # 표준 GitHub Action 사용
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11' # 사용할 파이썬 버전 명시
 
       - name: Install dependencies # 3단계: 필요한 라이브러리 설치
-        run: | # 실행할 명령어들
+        run: |
           python -m pip install --upgrade pip
           # requirements.txt 파일이 있으면 해당 파일로 라이브러리 설치
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          # requirements.txt 파일도 golf_score_bot 폴더 안에 있어야 함
+          if [ -f golf_score_bot/requirements.txt ]; then pip install -r golf_score_bot/requirements.txt; else echo "requirements.txt not found in golf_score_bot/"; fi
 
       - name: Run scraper script # 4단계: 메인 파이썬 스크립트 실행
         env: # 스크립트 실행 시 사용할 환경 변수 설정
-          # GitHub 저장소 Secrets에 설정된 값을 가져와 환경 변수로 만듦
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        # 실행할 명령어 (파이썬 인터프리터로 Golf_score.py 실행)
-        run: python Golf_score.py
+        # ▼▼▼ 여기가 수정되었습니다 (실행 경로 명시) ▼▼▼
+        # Golf_score.py 파일이 golf_score_bot 하위 폴더에 있다고 가정
+        run: python golf_score_bot/Golf_score.py
