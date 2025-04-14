@@ -10,9 +10,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 
+# 텔레그램 설정
 TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
 TELEGRAM_CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
 
+# 소속 선수명 (영문 기준)
 players = {
     '황중곤': 'Hwang Jung-gon',
     '이수민': 'Soo-min LEE',
@@ -38,8 +40,8 @@ def run_bot():
     url = 'https://www.kpga.co.kr/tours/game/game/?tourId=11&year=2025&gameId=202511000002M&type=leaderboard'
     driver.get(url)
 
-    # 리더보드 로딩 대기
     try:
+        # ✅ 기존 방식 유지: 4번째 tr이 로드될 때까지 대기
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "table.leaderboard-table2 tbody tr:nth-child(4) td"))
         )
