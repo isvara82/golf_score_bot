@@ -13,6 +13,7 @@ TELEGRAM_CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
 # Chrome 경로 (Google Chrome 기준)
 CHROME_PATH = "/usr/bin/google-chrome"
 CHROMEDRIVER_PATH = "/usr/local/bin/chromedriver"
+
 # 소속 선수 목록 (영문 포함)
 players = [
     '황중곤', '이수민', '이태훈', '김승민', '김현욱', '최준희',
