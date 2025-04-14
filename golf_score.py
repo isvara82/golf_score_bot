@@ -13,76 +13,70 @@ from bs4 import BeautifulSoup
 TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
 TELEGRAM_CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
 
-# 소속 선수명 (영문 기준)
-players = {
-    '황중곤': 'Hwang Jung-gon',
-    '이수민': 'Soo-min LEE',
-    '이태훈': 'Taehoon LEE',
-    '김승민': 'Seung-min KIM',
-    '김현욱': 'Hyun-wook KIM',
-    '최준희': 'Joon-hee CHOI',
-}
+# Google Chrome 경로
+CHROME_PATH = "/usr/bin/google-chrome"
+CHROMEDRIVER_PATH = "/usr/local/bin/chromedriver"
+
+# 소속 선수 목록
+players = [
+    '황중곤', '이수민', '이태훈', '김승민', '김현욱', '최준희',
+    'Taehoon LEE'
+]
 
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     requests.post(url, data={'chat_id': TELEGRAM_CHAT_ID, 'text': message})
 
 def run_bot():
+    # Selenium 설정
     options = Options()
+    options.binary_location = CHROME_PATH
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-
-    driver = webdriver.Chrome(options=options)
+    service = Service(CHROMEDRIVER_PATH)
+    driver = webdriver.Chrome(service=service, options=options)
 
     url = 'https://www.kpga.co.kr/tours/game/game/?tourId=11&year=2025&gameId=202511000002M&type=leaderboard'
     driver.get(url)
 
-    # 대기: 4번째 row의 td가 등장할 때까지 기다림
+    # 리더보드 테이블이 로딩될 때까지 최대 15초 대기
     try:
-        WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "table.leaderboard-table2 tbody tr:nth-child(4) td"))
+        WebDriverWait(driver, 15).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "table.score_table tbody tr"))
         )
     except:
-        print("[ERROR] 리더보드 테이블 로딩 실패")
-        driver.quit()
         send_telegram("[KPGA 성적 알림]\n\n리더보드 테이블 로딩에 실패했습니다.")
+        driver.quit()
         return
-
-    # 디버그용 HTML 저장
-    with open("full_debug.html", "w", encoding="utf-8") as f:
-        f.write(driver.page_source)
 
     html = driver.page_source
     driver.quit()
 
     soup = BeautifulSoup(html, 'html.parser')
-    rows = soup.select('table.leaderboard-table2 tbody tr')
+    rows = soup.select('table.score_table tbody tr')
 
     leader_info = ''
     player_infos = []
 
-    # 디버그 로그 파일
-    with open("debug_log.txt", "w", encoding="utf-8") as f:
-        for i, row in enumerate(rows):
-            cols = row.find_all('td')
-            if len(cols) < 8:
-                continue
+    for i, row in enumerate(rows):
+        cols = row.find_all('td')
+        if len(cols) < 8:
+            continue
 
-            rank = cols[1].text.strip()
-            name = cols[4].text.strip()
-            score = cols[5].text.strip()
+        rank = cols[0].text.strip()
+        name = cols[2].text.strip()
+        score = cols[7].text.strip()
 
-            f.write(f"[DEBUG] name = {name}, rank = {rank}, score = {score}\n")
+        # 선두 한 명
+        if i == 0:
+            leader_info = f"{name} : {rank}위({score})"
 
-            if not leader_info and rank and score:
-                leader_info = f"{name} : {rank}위({score})"
+        for p in players:
+            if p in name:
+                player_infos.append(f"{name} : {rank}위({score})")
 
-            for kor_name, eng_name in players.items():
-                if eng_name.lower() in name.lower():
-                    player_infos.append(f"{eng_name} : {rank}위({score})")
-
-    # 텔레그램 메시지 생성
+    # 텔레그램 메시지 구성
     message = "[KPGA 성적 알림]\n\n"
     if leader_info:
         message += f"■ 선두\n{leader_info}\n\n"
