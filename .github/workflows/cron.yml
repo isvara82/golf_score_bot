@@ -1,4 +1,4 @@
-name: Golf Score OCR Bot (KPGA)
+name: Golf Score KPGA Bot (HTML 파싱)
 
 on:
   schedule:
@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # Snap 설치 시간 초과 방지
+    timeout-minutes: 15
 
     steps:
     - uses: actions/checkout@v3
@@ -19,21 +19,16 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install Tesseract OCR
+    - name: Install Chrome & ChromeDriver
       run: |
         sudo apt-get update
-        sudo apt-get install -y tesseract-ocr libtesseract-dev
-        which tesseract
-
-    - name: Install Chromium & ChromeDriver (APT 방식)
-      run: |
         sudo apt-get install -y chromium-browser chromium-chromedriver
         sudo ln -sf /usr/lib/chromium-browser/chromedriver /usr/bin/chromedriver || true
 
     - name: Install Python dependencies
       run: pip install -r requirements.txt
 
-    - name: Run OCR Bot
+    - name: Run KPGA Bot
       env:
         TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
