@@ -5,6 +5,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
@@ -13,7 +14,7 @@ from bs4 import BeautifulSoup
 TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
 TELEGRAM_CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
 
-# Google Chrome 경로
+# Chrome 경로
 CHROME_PATH = "/usr/bin/google-chrome"
 CHROMEDRIVER_PATH = "/usr/local/bin/chromedriver"
 
@@ -28,7 +29,7 @@ def send_telegram(message):
     requests.post(url, data={'chat_id': TELEGRAM_CHAT_ID, 'text': message})
 
 def run_bot():
-    # Selenium 설정
+    # Selenium 옵션 설정
     options = Options()
     options.binary_location = CHROME_PATH
     options.add_argument('--headless')
@@ -40,7 +41,11 @@ def run_bot():
     url = 'https://www.kpga.co.kr/tours/game/game/?tourId=11&year=2025&gameId=202511000002M&type=leaderboard'
     driver.get(url)
 
-    # 리더보드 테이블이 로딩될 때까지 최대 15초 대기
+    # 강제 스크롤 → 테이블 렌더링 유도
+    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    time.sleep(2)
+
+    # 테이블 로딩 대기
     try:
         WebDriverWait(driver, 15).until(
             EC.presence_of_element_located((By.CSS_SELECTOR, "table.score_table tbody tr"))
@@ -50,6 +55,7 @@ def run_bot():
         driver.quit()
         return
 
+    # HTML 파싱
     html = driver.page_source
     driver.quit()
 
@@ -66,12 +72,13 @@ def run_bot():
 
         rank = cols[0].text.strip()
         name = cols[2].text.strip()
-        score = cols[7].text.strip()
+        score = cols[7].text.strip()  # Total 컬럼
 
-        # 선두 한 명
+        # 선두 추출
         if i == 0:
             leader_info = f"{name} : {rank}위({score})"
 
+        # 소속 선수 매칭
         for p in players:
             if p in name:
                 player_infos.append(f"{name} : {rank}위({score})")
