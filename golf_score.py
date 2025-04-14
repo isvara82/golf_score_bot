@@ -11,11 +11,15 @@ from bs4 import BeautifulSoup
 TELEGRAM_TOKEN = os.environ['TELEGRAM_TOKEN']
 TELEGRAM_CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
 
-# 소속 선수 목록 (영문 포함)
-players = [
-    '황중곤', '이수민', '이태훈', '김승민', '김현욱', '최준희',
-    'Taehoon LEE'
-]
+# 소속 선수 매핑 (한글 이름: 리더보드 상 영문 표기)
+players = {
+    '황중곤': 'Hwang Jung-gon',
+    '이수민': 'Soo-min LEE',
+    '이태훈': 'Taehoon LEE',
+    '김승민': 'Seung-min KIM',
+    '김현욱': 'Hyun-wook KIM',
+    '최준희': 'Joon-hee CHOI',
+}
 
 def send_telegram(message):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -52,13 +56,18 @@ def run_bot():
         name = cols[2].text.strip()
         score = cols[7].text.strip()
 
+        # 디버깅용 로그
+        print(f"[DEBUG] name = {name}, rank = {rank}, score = {score}")
+
+        # 첫 번째 줄은 선두
         if i == 0:
             leader_info = f"{name} : {rank}위({score})"
 
-        for p in players:
-            if p in name:
-                player_infos.append(f"{name} : {rank}위({score})")
+        for kor_name, eng_name in players.items():
+            if eng_name.lower() in name.lower():
+                player_infos.append(f"{eng_name} : {rank}위({score})")
 
+    # 메시지 조립
     message = "[KPGA 성적 알림]\n\n"
     if leader_info:
         message += f"■ 선두\n{leader_info}\n\n"
